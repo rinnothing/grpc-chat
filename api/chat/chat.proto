@@ -1,0 +1,52 @@
+syntax = "proto3";
+
+package chat;
+
+import "google/protobuf/timestamp.proto";
+
+service ChatInstance {
+  rpc SendHello(SendHelloRequest) returns (SendHelloResponse) {}
+  rpc SendMessage(SendMessageRequest) returns (SendMessageResponse) {}
+  rpc SendGoodbye(SendGoodbyeRequest) returns (SendGoodbyeResponse) {}
+}
+
+message Credentials {
+  string username = 1;
+  fixed32 IPv4 = 2;
+}
+
+message Message {
+  string text = 1;
+  google.protobuf.Timestamp time = 2;
+}
+
+message SendHelloRequest {
+  Credentials sender = 1;
+  Message request_text = 2;
+}
+
+message SendHelloResponse {
+  Credentials addressee = 1;
+  bool allowed = 2;
+  google.protobuf.Timestamp time = 3;
+}
+
+message SendMessageRequest {
+  Credentials sender = 1;
+  Message message = 2;
+}
+
+message SendMessageResponse {
+  Credentials addressee = 1;
+  google.protobuf.Timestamp time = 2;
+}
+
+message SendGoodbyeRequest {
+  Credentials sender = 1;
+  google.protobuf.Timestamp time = 2;
+}
+
+message SendGoodbyeResponse {
+  Credentials addressee = 1;
+  google.protobuf.Timestamp time = 2;
+}
