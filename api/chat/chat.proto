@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package chat;
 
+option go_package = "github.com/rinnothing/grpc-chat/api/chat;chat";
+
 import "google/protobuf/timestamp.proto";
 
 service ChatInstance {
