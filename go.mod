@@ -3,6 +3,7 @@ module github.com/rinnothing/grpc-chat
 go 1.23
 
 require (
+	github.com/go-ozzo/ozzo-validation/v4 v4.3.0
 	google.golang.org/grpc v1.68.1
 	google.golang.org/protobuf v1.35.2
 )
