@@ -22,6 +22,10 @@ var (
 			validation.Field(&cred.Username, validation.Required, isUsernameFormat, validation.Length(5, 20)))
 	})
 
+	isCorrectSentTimestamp = func() validation.ThresholdRule {
+		return validation.Max(timestamppb.Now())
+	}
+
 	isCorrectMessage = validation.By(func(value interface{}) error {
 		message, ok := value.(*desc.Message)
 		if !ok {
@@ -30,7 +34,7 @@ var (
 
 		return validation.ValidateStruct(
 			message,
-			validation.Field(&message.Time, validation.Required, validation.Max(timestamppb.Now())),
+			validation.Field(&message.Time, validation.Required, isCorrectSentTimestamp()),
 			validation.Field(&message.Text, validation.Required, validation.Length(0, 1000)),
 			)
 	})
