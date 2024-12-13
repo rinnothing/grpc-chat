@@ -3,8 +3,9 @@ package chat
 import (
 	"context"
 	"errors"
-	desc "github.com/rinnothing/grpc-chat/pkg/generated/proto/chat"
+
 	validation "github.com/go-ozzo/ozzo-validation/v4"
+	desc "github.com/rinnothing/grpc-chat/pkg/generated/proto/chat"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )

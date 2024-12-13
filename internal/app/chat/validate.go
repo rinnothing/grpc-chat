@@ -2,6 +2,7 @@ package chat
 
 import (
 	"errors"
+
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 	desc "github.com/rinnothing/grpc-chat/pkg/generated/proto/chat"
 	"google.golang.org/protobuf/types/known/timestamppb"

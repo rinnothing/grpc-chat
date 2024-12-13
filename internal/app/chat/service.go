@@ -2,6 +2,7 @@ package chat
 
 import (
 	"context"
+
 	desc "github.com/rinnothing/grpc-chat/pkg/generated/proto/chat"
 )
 
