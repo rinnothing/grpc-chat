@@ -3,6 +3,7 @@ package send_goodbye
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/rinnothing/grpc-chat/internal/pkg/convert"
 	"github.com/rinnothing/grpc-chat/internal/pkg/model"
@@ -23,7 +24,7 @@ type Connections interface {
 }
 
 type Chat interface {
-	CloseChat(ctx context.Context, user *model.User) error
+	CloseChat(ctx context.Context, user *model.User, time time.Time) error
 }
 
 type Identify interface {
@@ -62,7 +63,8 @@ func (uc *UseCase) SendGoodbye(ctx context.Context, req *desc.SendGoodbyeRequest
 		return nil, status.Error(codes.Internal, "repository error")
 	}
 
-	err = uc.chat.CloseChat(ctx, user)
+	sentTime := req.Time.AsTime()
+	err = uc.chat.CloseChat(ctx, user, sentTime)
 	if err != nil {
 		return nil, status.Error(codes.Internal, "chat error")
 	}
