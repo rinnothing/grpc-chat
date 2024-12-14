@@ -27,24 +27,20 @@ func NewIdentifyRepo() *Repo {
 }
 
 func (r *Repo) Connect(ctx context.Context, user *model.User) error {
-	err := func() error {
-		r.mx.RLock()
-		defer r.mx.RUnlock()
+	r.mx.RLock()
+	var once sync.Once
+	defer once.Do(r.mx.RUnlock)
 
-		if ctx.Err() != nil {
-			return ctx.Err()
-		}
-
-		val, ok := r.data[user.ID]
-		if ok && !bytes.Equal(val.IPv4, user.IPv4) {
-			return ErrAlreadyConnected
-		}
-
-		return nil
-	}()
-	if err != nil {
-		return err
+	if ctx.Err() != nil {
+		return ctx.Err()
 	}
+
+	val, ok := r.data[user.ID]
+	if ok && !bytes.Equal(val.IPv4, user.IPv4) {
+		return ErrAlreadyConnected
+	}
+
+	r.mx.RUnlock()
 
 	r.mx.Lock()
 	defer r.mx.Unlock()
@@ -53,7 +49,7 @@ func (r *Repo) Connect(ctx context.Context, user *model.User) error {
 		return ctx.Err()
 	}
 
-	val, ok := r.data[user.ID]
+	val, ok = r.data[user.ID]
 	if ok && !bytes.Equal(val.IPv4, user.IPv4) {
 		return ErrAlreadyConnected
 	}
@@ -79,24 +75,20 @@ func (r *Repo) IsConnected(ctx context.Context, user *model.User) error {
 }
 
 func (r *Repo) Disconnect(ctx context.Context, user *model.User) error {
-	err := func() error {
-		r.mx.RLock()
-		defer r.mx.RUnlock()
+	r.mx.RLock()
+	var once sync.Once
+	defer once.Do(r.mx.RUnlock)
 
-		if ctx.Err() != nil {
-			return ctx.Err()
-		}
-
-		_, ok := r.data[user.ID]
-		if !ok {
-			return ErrNotConnected
-		}
-
-		return nil
-	}()
-	if err != nil {
-		return err
+	if ctx.Err() != nil {
+		return ctx.Err()
 	}
+
+	_, ok := r.data[user.ID]
+	if !ok {
+		return ErrNotConnected
+	}
+
+	r.mx.RUnlock()
 
 	r.mx.Lock()
 	defer r.mx.Unlock()
@@ -105,7 +97,7 @@ func (r *Repo) Disconnect(ctx context.Context, user *model.User) error {
 		return ctx.Err()
 	}
 
-	_, ok := r.data[user.ID]
+	_, ok = r.data[user.ID]
 	if !ok {
 		return ErrNotConnected
 	}
