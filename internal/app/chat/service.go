@@ -32,3 +32,11 @@ type Implementation struct {
 	SendMessageUseCase SendMessageUseCase
 	SendGoodbyeUseCase SendGoodbyeUseCase
 }
+
+func New(hello SendHelloUseCase, message SendMessageUseCase, goodbye SendGoodbyeUseCase) *Implementation {
+	return &Implementation{
+		SendHelloUseCase:                hello,
+		SendMessageUseCase:              message,
+		SendGoodbyeUseCase:              goodbye,
+	}
+}

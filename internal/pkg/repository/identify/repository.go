@@ -11,7 +11,7 @@ type Repo struct {
 	user model.User
 }
 
-func NewIdentifyRepository(IPv4 net.IP, username string) *Repo {
+func NewRepo(IPv4 net.IP, username string) *Repo {
 	return &Repo{
 		user: model.User{
 			Username: username,

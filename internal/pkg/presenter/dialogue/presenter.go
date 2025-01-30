@@ -16,7 +16,7 @@ type Presenter struct {
 	output io.Writer
 }
 
-func NewDialoguePresenter(input io.Reader, output io.Writer) *Presenter {
+func NewPresenter(input io.Reader, output io.Writer) *Presenter {
 	return &Presenter{
 		input:  input,
 		output: output,

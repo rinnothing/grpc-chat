@@ -20,7 +20,7 @@ type Entry struct {
 	message model.Message
 }
 
-func NewMessageRepo() *Repo {
+func NewRepo() *Repo {
 	return &Repo{
 		mx:       new(sync.RWMutex),
 		messages: make([]Entry, 0),

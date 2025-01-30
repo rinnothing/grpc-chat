@@ -13,7 +13,7 @@ type Presenter struct {
 	output io.Writer
 }
 
-func NewChatPresenter(output io.Writer) *Presenter {
+func NewPresenter(output io.Writer) *Presenter {
 	return &Presenter{
 		output: output,
 	}

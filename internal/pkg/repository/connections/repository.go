@@ -19,7 +19,7 @@ type Repo struct {
 	data map[int]*model.User
 }
 
-func NewIdentifyRepo() *Repo {
+func NewRepo() *Repo {
 	return &Repo{
 		mx:   new(sync.RWMutex),
 		data: make(map[int]*model.User),
