@@ -18,13 +18,13 @@ func (i *Implementation) SendGoodbye(ctx context.Context, req *desc.SendGoodbyeR
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	err := i.SendGoodbyeUseCase.SendGoodbye(ctx, convert.Credentials2User(req.Sender, 0), req.Time.AsTime())
+	usr, err := i.SendGoodbyeUseCase.SendGoodbye(ctx, convert.Credentials2User(req.Sender, 0), req.Time.AsTime())
 	if err != nil {
 		return nil, status.Error(codes.Internal, "internal connection closing error")
 	}
 
 	return &desc.SendGoodbyeResponse{
-		Addressee: req.Sender,
+		Addressee: convert.User2Credentials(usr),
 		Time:      timestamppb.Now(),
 	}, nil
 }

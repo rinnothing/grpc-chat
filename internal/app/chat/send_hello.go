@@ -18,14 +18,14 @@ func (i *Implementation) SendHello(ctx context.Context, req *desc.SendHelloReque
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	allowed, err := i.SendHelloUseCase.SendHello(ctx,
+	allowed, usr, err := i.SendHelloUseCase.SendHello(ctx,
 		convert.Text2Message(req.RequestText, convert.Credentials2User(req.Sender, 0), 0))
 	if err != nil {
 		return nil, status.Error(codes.Internal, "internal connection establishment error")
 	}
 
 	return &desc.SendHelloResponse{
-		Addressee: req.Sender,
+		Addressee: convert.User2Credentials(usr),
 		Allowed:   allowed,
 		Time:      timestamppb.Now(),
 	}, nil
