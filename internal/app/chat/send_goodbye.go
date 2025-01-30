@@ -3,6 +3,7 @@ package chat
 import (
 	"context"
 	"errors"
+	"github.com/rinnothing/grpc-chat/internal/pkg/repository/connections"
 
 	"github.com/rinnothing/grpc-chat/internal/pkg/convert"
 	desc "github.com/rinnothing/grpc-chat/pkg/generated/proto/chat"
@@ -20,6 +21,9 @@ func (i *Implementation) SendGoodbye(ctx context.Context, req *desc.SendGoodbyeR
 
 	usr, err := i.SendGoodbyeUseCase.SendGoodbye(ctx, convert.Credentials2User(req.Sender, 0), req.Time.AsTime())
 	if err != nil {
+		if errors.Is(err, connections.ErrNotConnected) {
+			return nil, status.Error(codes.Unauthenticated, "can't close non-existing connection")
+		}
 		return nil, status.Error(codes.Internal, "internal connection closing error")
 	}
 

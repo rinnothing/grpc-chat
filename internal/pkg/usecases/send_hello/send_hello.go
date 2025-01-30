@@ -5,15 +5,9 @@ import (
 	"errors"
 	"time"
 
-	"github.com/rinnothing/grpc-chat/internal/pkg/convert"
 	"github.com/rinnothing/grpc-chat/internal/pkg/model"
 	"github.com/rinnothing/grpc-chat/internal/pkg/presenter/dialogue"
 	"github.com/rinnothing/grpc-chat/internal/pkg/repository/connections"
-	desc "github.com/rinnothing/grpc-chat/pkg/generated/proto/chat"
-
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type UserRepo interface {
@@ -60,50 +54,49 @@ func New(repo UserRepo, connections Connections, message MessageRepo, dialogue D
 	}
 }
 
-func (uc *UseCase) makeResponse(ctx context.Context, allowed bool) *desc.SendHelloResponse {
-	return &desc.SendHelloResponse{
-		Addressee: convert.User2Credentials(uc.identify.Myself(ctx)),
-		Allowed:   allowed,
-		Time:      timestamppb.Now(),
+func (uc *UseCase) SendHello(ctx context.Context, request *model.Message) (bool, *model.User, error) {
+	// getting myself
+	myself := uc.identify.Myself(ctx)
+	if myself == nil {
+		return false, nil, errors.New("can't identify myself")
 	}
-}
 
-func (uc *UseCase) SendHello(ctx context.Context, req *desc.SendHelloRequest) (*desc.SendHelloResponse, error) {
-	id, err := uc.repo.GetID(ctx, req.Sender.Username)
+	// getting user id
+	var err error
+	request.User.ID, err = uc.repo.GetID(ctx, request.User.Username)
 	if err != nil {
-		return nil, status.Error(codes.Internal, "repository error")
+		return false, myself, err
 	}
 
-	user := convert.Credentials2User(req.Sender, id)
-
-	err = uc.connections.Connect(ctx, user)
+	// trying to make connect
+	err = uc.connections.Connect(ctx, request.User)
 	if err != nil {
 		if errors.Is(err, connections.ErrAlreadyConnected) {
-			return uc.makeResponse(ctx, false), nil
+			return false, myself, nil
 		}
-		return nil, status.Error(codes.Internal, "repository error")
+		return false, myself, err
 	}
 
-	sentTime := req.RequestText.Time.AsTime()
-	messageID, err := uc.message.PutID(ctx, user, req.RequestText.Text, sentTime)
+	// getting message id
+	request.ID, err = uc.message.PutID(ctx, request.User, request.Text, request.Time)
 	if err != nil {
-		return nil, status.Error(codes.Internal, "repository error")
+		return false, myself, err
 	}
 
-	message := convert.Text2Message(req.RequestText, user, messageID)
-
-	err = uc.dialogue.AskAccept(ctx, user, message)
+	// ask if connection request is accepted
+	err = uc.dialogue.AskAccept(ctx, request.User, request)
 	if err != nil {
 		if errors.Is(err, dialogue.ErrNotAllowed) {
-			return uc.makeResponse(ctx, false), nil
+			return false, myself, nil
 		}
-		return nil, status.Error(codes.Internal, "dialogue error")
+		return false, myself, err
 	}
 
-	err = uc.chat.NewChat(ctx, user, message)
+	// displaying new message in chat
+	err = uc.chat.NewChat(ctx, request.User, request)
 	if err != nil {
-		return nil, status.Error(codes.Internal, "dialogue error")
+		return true, myself, err
 	}
 
-	return uc.makeResponse(ctx, true), nil
+	return false, myself, nil
 }

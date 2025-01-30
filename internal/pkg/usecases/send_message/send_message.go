@@ -5,14 +5,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/rinnothing/grpc-chat/internal/pkg/convert"
 	"github.com/rinnothing/grpc-chat/internal/pkg/model"
-	"github.com/rinnothing/grpc-chat/internal/pkg/repository/connections"
-	desc "github.com/rinnothing/grpc-chat/pkg/generated/proto/chat"
-
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type UserRepo interface {
@@ -53,37 +46,37 @@ func New(repo UserRepo, connections Connections, message MessageRepo, chat Chat,
 	}
 }
 
-func (uc *UserCase) SendMessage(ctx context.Context, req *desc.SendMessageRequest) (*desc.SendMessageResponse, error) {
-	id, err := uc.repo.GetID(ctx, req.Sender.Username)
-	if err != nil {
-		return nil, status.Error(codes.Internal, "repository error")
+func (uc *UserCase) SendMessage(ctx context.Context, message *model.Message) (*model.User, error) {
+	// getting myself
+	myself := uc.identify.Myself(ctx)
+	if myself == nil {
+		return nil, errors.New("can't identify myself")
 	}
 
-	user := convert.Credentials2User(req.Sender, id)
-
-	err = uc.connections.IsConnected(ctx, user)
+	// getting user id
+	var err error
+	message.User.ID, err = uc.repo.GetID(ctx, message.User.Username)
 	if err != nil {
-		if errors.Is(err, connections.ErrNotConnected) {
-			return nil, status.Error(codes.Unauthenticated, err.Error())
-		}
-		return nil, status.Error(codes.Internal, "repository error")
+		return nil, err
 	}
 
-	sentTime := req.Message.Time.AsTime()
-	messageID, err := uc.message.PutID(ctx, user, req.Message.Text, sentTime)
+	// checking connection
+	err = uc.connections.IsConnected(ctx, message.User)
 	if err != nil {
-		return nil, status.Error(codes.Internal, "repository error")
+		return nil, err
 	}
 
-	message := convert.Text2Message(req.Message, user, messageID)
-
-	err = uc.chat.NewMessage(ctx, user, message)
+	// registering incoming message
+	message.ID, err = uc.message.PutID(ctx, message.User, message.Text, message.Time)
 	if err != nil {
-		return nil, status.Error(codes.Internal, "chat error")
+		return nil, err
 	}
 
-	return &desc.SendMessageResponse{
-		Addressee: convert.User2Credentials(user),
-		Time:      timestamppb.New(sentTime),
-	}, nil
+	// notifying chat about the new message
+	err = uc.chat.NewMessage(ctx, message.User, message)
+	if err != nil {
+		return nil, err
+	}
+
+	return myself, nil
 }

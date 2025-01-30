@@ -3,6 +3,7 @@ package chat
 import (
 	"context"
 	"errors"
+	"github.com/rinnothing/grpc-chat/internal/pkg/repository/connections"
 	"time"
 
 	"github.com/rinnothing/grpc-chat/internal/pkg/convert"
@@ -22,6 +23,9 @@ func (i *Implementation) SendMessage(ctx context.Context, req *desc.SendMessageR
 	usr, err := i.SendMessageUseCase.SendMessage(ctx,
 		convert.Text2Message(req.Message, convert.Credentials2User(req.Sender, 0), 0))
 	if err != nil {
+		if errors.Is(err, connections.ErrNotConnected) {
+			return nil, status.Error(codes.Unauthenticated, "can't send message on non-existing connection")
+		}
 		return nil, status.Error(codes.Internal, "internal incoming message proceeding error")
 	}
 
