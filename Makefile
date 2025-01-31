@@ -23,7 +23,13 @@ install-deps:
 	go install google.golang.org/protobuf/cmd/protoc-gen-go@latest && \
     go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
 
+.PHONY: generate
 generate: install-deps
 	protoc -I=${api} --go_out=${proto_target} --go_opt=paths=source_relative --go-grpc_out=${proto_target} \
 	--go-grpc_opt=paths=source_relative ${api}/chat/chat.proto
 	go mod tidy
+
+.PHONY:
+run:
+	go build  -o $(LOCAL_BIN)/chat cmd/chat/main.go
+	$(LOCAL_BIN)/chat
