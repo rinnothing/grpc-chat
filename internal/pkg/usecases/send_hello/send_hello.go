@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/rinnothing/grpc-chat/internal/config"
 	"github.com/rinnothing/grpc-chat/internal/pkg/model"
 	"github.com/rinnothing/grpc-chat/internal/pkg/presenter/dialogue"
 	"github.com/rinnothing/grpc-chat/internal/pkg/repository/connections"
@@ -83,13 +84,16 @@ func (uc *UseCase) SendHello(ctx context.Context, request *model.Message) (bool,
 		return false, myself, err
 	}
 
-	// ask if connection request is accepted
-	err = uc.dialogue.AskAccept(ctx, request.User, request)
-	if err != nil {
-		if errors.Is(err, dialogue.ErrNotAllowed) {
-			return false, myself, nil
+	// check for automatic accept
+	if !config.MustGetAcceptAll() {
+		// ask if connection request is accepted
+		err = uc.dialogue.AskAccept(ctx, request.User, request)
+		if err != nil {
+			if errors.Is(err, dialogue.ErrNotAllowed) {
+				return false, myself, nil
+			}
+			return false, myself, err
 		}
-		return false, myself, err
 	}
 
 	// displaying new message in chat
@@ -98,5 +102,5 @@ func (uc *UseCase) SendHello(ctx context.Context, request *model.Message) (bool,
 		return true, myself, err
 	}
 
-	return false, myself, nil
+	return true, myself, nil
 }

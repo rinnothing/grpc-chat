@@ -1,7 +1,7 @@
 package main
 
 import (
-	"context"
+	"flag"
 	"log"
 	"net"
 	"os"
@@ -27,6 +27,8 @@ import (
 )
 
 func main() {
+	flag.Parse()
+
 	// creating repos to store data
 	userRepo := user.NewRepo()
 	messageRepo := message.NewRepo()
@@ -68,12 +70,11 @@ func main() {
 	go i.runGrpc(config.MustGetPort(), appService)
 
 	// registering interrupts
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 
 	// waiting for interrupt
-	<-ctx.Done()
-	stop()
+	<-c
 
 	// shutting down the server
 	i.server.GracefulStop()

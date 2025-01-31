@@ -29,7 +29,18 @@ generate: install-deps
 	--go-grpc_opt=paths=source_relative ${api}/chat/chat.proto
 	go mod tidy
 
-.PHONY:
-run:
+.PHONY: build
+build:
 	go build  -o $(LOCAL_BIN)/chat cmd/chat/main.go
+
+.PHONY: run
+run: build
 	$(LOCAL_BIN)/chat
+
+.PHONY: integration
+integration: build
+	err = $(LOCAL_BIN)/chat --accept-all & \
+	pid=$$! && \
+	go test $(CURDIR)/integration && \
+	kill -s INT $$pid && \
+	wait $$pid

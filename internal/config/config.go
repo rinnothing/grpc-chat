@@ -1,6 +1,9 @@
 package config
 
-import "net"
+import (
+	"flag"
+	"net"
+)
 
 const myUsername = "rinnothing"
 
@@ -28,4 +31,15 @@ func MustGetIPv4() net.IP {
 		}
 	}
 	return nil
+}
+
+// if true all incoming connections are accepted automatically
+var acceptAll bool
+
+func MustGetAcceptAll() bool {
+	return acceptAll
+}
+
+func init() {
+	flag.CommandLine.BoolVar(&acceptAll, "accept-all", false, "accept all incoming connections")
 }
