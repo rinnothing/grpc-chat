@@ -2,10 +2,6 @@ package main
 
 import (
 	"context"
-	desc "github.com/rinnothing/grpc-chat/pkg/generated/proto/chat"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/health"
-	"google.golang.org/grpc/health/grpc_health_v1"
 	"log"
 	"net"
 	"os"
@@ -23,6 +19,11 @@ import (
 	"github.com/rinnothing/grpc-chat/internal/pkg/usecases/send_goodbye"
 	"github.com/rinnothing/grpc-chat/internal/pkg/usecases/send_hello"
 	"github.com/rinnothing/grpc-chat/internal/pkg/usecases/send_message"
+	desc "github.com/rinnothing/grpc-chat/pkg/generated/proto/chat"
+
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/health"
+	"google.golang.org/grpc/health/grpc_health_v1"
 )
 
 func main() {
@@ -76,6 +77,7 @@ func main() {
 
 	// shutting down the server
 	i.server.GracefulStop()
+	log.Println("performed graceful stop")
 }
 
 type implementation struct {
