@@ -3,7 +3,6 @@ package chat
 import (
 	"context"
 	"errors"
-
 	"github.com/rinnothing/grpc-chat/internal/pkg/convert"
 	desc "github.com/rinnothing/grpc-chat/pkg/generated/proto/chat"
 

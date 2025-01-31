@@ -41,6 +41,6 @@ func validateSendGoodbyeRequest(ctx context.Context, req *desc.SendGoodbyeReques
 		ctx,
 		req,
 		validation.Field(&req.Sender, validation.Required, isCorrectCredentials),
-		validation.Field(&req.Time, validation.Required, isCorrectCredentials),
+		validation.Field(&req.Time, validation.Required, isCorrectSentTimestamp),
 	)
 }

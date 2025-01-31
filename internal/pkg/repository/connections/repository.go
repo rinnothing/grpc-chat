@@ -40,7 +40,7 @@ func (r *Repo) Connect(ctx context.Context, user *model.User) error {
 		return ErrAlreadyConnected
 	}
 
-	r.mx.RUnlock()
+	once.Do(r.mx.RUnlock)
 
 	r.mx.Lock()
 	defer r.mx.Unlock()
@@ -88,7 +88,7 @@ func (r *Repo) Disconnect(ctx context.Context, user *model.User) error {
 		return ErrNotConnected
 	}
 
-	r.mx.RUnlock()
+	once.Do(r.mx.RUnlock)
 
 	r.mx.Lock()
 	defer r.mx.Unlock()

@@ -32,7 +32,7 @@ func (r *Repo) GetID(ctx context.Context, username string) (int, error) {
 		return val, nil
 	}
 
-	r.mx.RUnlock()
+	once.Do(r.mx.RUnlock)
 
 	r.mx.Lock()
 	defer r.mx.Unlock()
