@@ -2,9 +2,11 @@ package tui
 
 import (
 	"fmt"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/rinnothing/grpc-chat/internal/pkg/model"
 	"time"
+
+	"github.com/rinnothing/grpc-chat/internal/pkg/model"
+
+	tea "github.com/charmbracelet/bubbletea"
 )
 
 func (m *Model) viewChats() string {

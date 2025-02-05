@@ -1,10 +1,14 @@
 package tui
 
 import (
+	"context"
 	"fmt"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/rinnothing/grpc-chat/internal/pkg/model"
 	"strings"
+	"time"
+
+	"github.com/rinnothing/grpc-chat/internal/pkg/model"
+
+	tea "github.com/charmbracelet/bubbletea"
 )
 
 const gap = "\n"
@@ -63,7 +67,7 @@ func (m *Model) updateBrowseMessages(msg tea.Msg) (*Model, tea.Cmd) {
 		m.curUser = msg.user
 		// send command to retrieve content
 		return m, func() tea.Msg {
-			return gotMessagesMsg{msg.user, m.msgRepo.GetMessages(msg.user)}
+			return gotMessagesMsg{msg.user, m.msgRepo.GetMessages(context.TODO(), msg.user)}
 		}
 	case gotMessagesMsg:
 		m.chatContentStr = renderChat(msg.usr, msg.msg)
@@ -84,6 +88,10 @@ func (m *Model) updateBrowseMessages(msg tea.Msg) (*Model, tea.Cmd) {
 	return m, cmd
 }
 
+type sendErrorMsg struct {
+	err error
+}
+
 // updateWriteMessage returns nil as first argument if message isn't supported
 func (m *Model) updateWriteMessage(msg tea.Msg) (*Model, tea.Cmd) {
 	switch msg := msg.(type) {
@@ -93,8 +101,32 @@ func (m *Model) updateWriteMessage(msg tea.Msg) (*Model, tea.Cmd) {
 		case "esc":
 			m.status = browseMessages
 			m.messageInput.Blur()
+		case "shift+enter":
+			var cmd tea.Cmd
+			m.messageInput, cmd = m.messageInput.Update(tea.KeyEnter)
+			return m, cmd
+		case "enter":
+			if m.messageInput.Length() == 0 {
+				return m, nil
+			}
+
+			curText := m.messageInput.Value()
+			curUser := m.curUser
+			return m, func() tea.Msg {
+				err := m.sender.Send(context.TODO(), &model.Message{
+					User: curUser,
+					Text: curText,
+					Time: time.Now(),
+				})
+
+				if err != nil {
+					return sendErrorMsg{err}
+				}
+				return nil
+			}
 		}
 	}
+	// todo: add handler for send error
 
 	// otherwise pass it down the line
 	var cmd tea.Cmd

@@ -1,12 +1,15 @@
 package tui
 
 import (
+	"context"
+	"sync"
+
+	"github.com/rinnothing/grpc-chat/internal/pkg/model"
+
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/rinnothing/grpc-chat/internal/pkg/model"
-	"sync"
 )
 
 type modelState int
@@ -18,30 +21,27 @@ const (
 )
 
 type MessageSender interface {
-	Send(msg model.Message) error
+	Send(ctx context.Context, msg *model.Message) error
 }
 
 type MessageRepo interface {
-	GetMessages(usr *model.User) []*model.Message
+	GetMessages(ctx context.Context, usr *model.User) []*model.Message
 }
 
 type Model struct {
 	status modelState
 
 	chatsList    table.Model
-	chatContent  viewport.Model
-	messageInput textarea.Model
-
-	sender MessageSender
-
 	rowToUser []*model.User
 	rowsMx    sync.Mutex
 
+	chatContent  viewport.Model
 	msgRepo MessageRepo
-
+	chatContentStr string
 	curUser *model.User
 
-	chatContentStr string
+	messageInput textarea.Model
+	sender MessageSender
 }
 
 func New(sender MessageSender, msgRepo MessageRepo) *Model {
