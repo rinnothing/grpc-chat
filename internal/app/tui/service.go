@@ -88,7 +88,7 @@ type ErrorMsg struct {
 }
 
 // Update passes message to it's two parts or processes it itself when key
-func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
+func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	// key messages only belong to one update
 	case tea.KeyMsg:
@@ -135,3 +135,4 @@ func (m *Model) View() string {
 		panic("unknown model status")
 	}
 }
+

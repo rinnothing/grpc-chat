@@ -1,17 +1,20 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"log"
 	"net"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	service "github.com/rinnothing/grpc-chat/internal/app/chat"
+	"github.com/rinnothing/grpc-chat/internal/app/tui"
 	"github.com/rinnothing/grpc-chat/internal/config"
-	"github.com/rinnothing/grpc-chat/internal/pkg/presenter/chat"
-	"github.com/rinnothing/grpc-chat/internal/pkg/presenter/dialogue"
+	"github.com/rinnothing/grpc-chat/internal/pkg/model"
+	tuiPres "github.com/rinnothing/grpc-chat/internal/pkg/presenter/tui"
 	"github.com/rinnothing/grpc-chat/internal/pkg/repository/connections"
 	"github.com/rinnothing/grpc-chat/internal/pkg/repository/identify"
 	"github.com/rinnothing/grpc-chat/internal/pkg/repository/message"
@@ -21,10 +24,28 @@ import (
 	"github.com/rinnothing/grpc-chat/internal/pkg/usecases/send_message"
 	desc "github.com/rinnothing/grpc-chat/pkg/generated/proto/chat"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/health"
 	"google.golang.org/grpc/health/grpc_health_v1"
 )
+
+// tempSender is temporary structure used before I write an actual implementation
+type tempSender struct{}
+
+func (t *tempSender) Send(ctx context.Context, msg *model.Message) error {
+	//TODO: replace with an actual implementation
+	return nil
+}
+
+type tempGetMessages struct {
+	message []*model.Message
+}
+
+func (t *tempGetMessages) GetMessages(ctx context.Context, usr *model.User) []*model.Message {
+	// TODO: replace with an actual implementation
+	return t.message
+}
 
 func main() {
 	flag.Parse()
@@ -36,21 +57,35 @@ func main() {
 	identifyRepo := identify.NewRepo(config.MustGetIPv4(), config.MustGetUsername())
 
 	// creating chat instances (i.e. interface)
-	dialoguePresenter := dialogue.NewPresenter(os.Stdin, os.Stdout)
-	chatPresenter := chat.NewPresenter(os.Stdout)
+
+	//dialoguePresenter := dialogue.NewPresenter(os.Stdin, os.Stdout)
+	//chatPresenter := chat.NewPresenter(os.Stdout)
+
+	usr := &model.User{
+		ID:       10,
+		Username: "mike_miami",
+		IPv4:     net.IPv4(127, 0, 0, 1),
+	}
+	startTime := time.Now().Truncate(2 * time.Hour)
+	mdl := tui.New(&tempSender{}, &tempGetMessages{[]*model.Message{
+		{3, usr, "hello", startTime},
+		{5, usr, "world", startTime.Add(time.Hour)},
+	}})
+	program := tea.NewProgram(mdl)
+	presenter := tuiPres.New(program)
 
 	// initializing usecases
 	sendHello := send_hello.New(
 		userRepo,
 		connectionsRepo,
 		messageRepo,
-		dialoguePresenter,
-		chatPresenter,
+		presenter,
+		presenter,
 		identifyRepo,
 	)
 	sendGoodbye := send_goodbye.New(
 		userRepo,
-		chatPresenter,
+		presenter,
 		connectionsRepo,
 		identifyRepo,
 	)
@@ -58,7 +93,7 @@ func main() {
 		userRepo,
 		connectionsRepo,
 		messageRepo,
-		chatPresenter,
+		presenter,
 		identifyRepo,
 	)
 
@@ -69,12 +104,26 @@ func main() {
 	i := implementation{}
 	go i.runGrpc(config.MustGetPort(), appService)
 
+	tuiChan := make(chan interface{})
+	// running tui
+	go func() {
+		if _, err := program.Run(); err != nil {
+			// TODO: add proper logging
+			log.Println(err)
+		}
+
+		close(tuiChan)
+	}()
+
 	// registering interrupts
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 
-	// waiting for interrupt
-	<-c
+	// waiting for interrupt or interface close
+	select {
+	case <-tuiChan:
+	case <-c:
+	}
 
 	// shutting down the server
 	i.server.GracefulStop()

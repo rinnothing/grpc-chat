@@ -12,10 +12,10 @@ import (
 )
 
 type Presenter struct {
-	model tea.Program
+	model *tea.Program
 }
 
-func New(model tea.Program) *Presenter {
+func New(model *tea.Program) *Presenter {
 	return &Presenter{model: model}
 }
 
