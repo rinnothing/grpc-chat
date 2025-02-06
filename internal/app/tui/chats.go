@@ -13,9 +13,9 @@ func (m *Model) viewChats() string {
 	return m.chatsList.View()
 }
 
-// message that signals that new chat has opened
-type newChatMsg struct {
-	msg *model.Message
+//NewChatMsg is the message that signals that new chat has opened
+type NewChatMsg struct {
+	Msg *model.Message
 }
 
 func timeFormat(t time.Time) string {
@@ -42,19 +42,19 @@ func (m *Model) updateChats(msg tea.Msg) (*Model, tea.Cmd) {
 			}
 
 			// tell messages to open chat of user, then switch the status
-			m.Update(openBranchMsg{m.rowToUser[m.chatsList.Cursor()]})
+			m.Update(OpenBranchMsg{m.rowToUser[m.chatsList.Cursor()]})
 			m.chatsList.Blur()
 			m.status = browseMessages
 		}
-	case newChatMsg:
+	case NewChatMsg:
 		m.rowsMx.Lock()
 
 		// adding user to list
-		m.rowToUser = append(m.rowToUser, msg.msg.User)
+		m.rowToUser = append(m.rowToUser, msg.Msg.User)
 
 		// adding new row to user interface
 		updatedRows := m.chatsList.Rows()
-		updatedRows = append(updatedRows, msgToRow(msg.msg))
+		updatedRows = append(updatedRows, msgToRow(msg.Msg))
 		m.chatsList.SetRows(updatedRows)
 
 		m.rowsMx.Unlock()

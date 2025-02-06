@@ -17,19 +17,19 @@ func (m *Model) viewMessages() string {
 	return fmt.Sprintf("%s%s%s", m.chatContent.View(), gap, m.messageInput.View())
 }
 
-// message that signals that new message has arrived
-type newMessageMsg struct {
-	msg *model.Message
+// NewMessageMsg is the message that signals that new message has arrived
+type NewMessageMsg struct {
+	Msg *model.Message
 }
 
-// message that signals to open message branch of given user
-type openBranchMsg struct {
-	user *model.User
+// OpenBranchMsg is the message that signals to open message branch of given user
+type OpenBranchMsg struct {
+	User *model.User
 }
 
-type gotMessagesMsg struct {
-	usr *model.User
-	msg []*model.Message
+type GotMessagesMsg struct {
+	Usr *model.User
+	Msg []*model.Message
 }
 
 func renderMessage(msg *model.Message) string {
@@ -61,25 +61,25 @@ func (m *Model) updateBrowseMessages(msg tea.Msg) (*Model, tea.Cmd) {
 			m.status = writeMessage
 			m.messageInput.Focus()
 		}
-	case openBranchMsg:
+	case OpenBranchMsg:
 		// setting loading screen
-		m.chatContent.SetContent(fmt.Sprintf("%s\nloading...", msg.user.Username))
-		m.curUser = msg.user
+		m.chatContent.SetContent(fmt.Sprintf("%s\nloading...", msg.User.Username))
+		m.curUser = msg.User
 		// send command to retrieve content
 		return m, func() tea.Msg {
-			return gotMessagesMsg{msg.user, m.msgRepo.GetMessages(context.TODO(), msg.user)}
+			return GotMessagesMsg{msg.User, m.msgRepo.GetMessages(context.TODO(), msg.User)}
 		}
-	case gotMessagesMsg:
-		m.chatContentStr = renderChat(msg.usr, msg.msg)
+	case GotMessagesMsg:
+		m.chatContentStr = renderChat(msg.Usr, msg.Msg)
 		m.chatContent.SetContent(m.chatContentStr)
-	case newMessageMsg:
+	case NewMessageMsg:
 		// skip if not in current chat
-		if m.curUser == nil || msg.msg.User.Username != m.curUser.Username {
+		if m.curUser == nil || msg.Msg.User.Username != m.curUser.Username {
 			return m, nil
 		}
 
 		// otherwise add new message to list
-		m.chatContentStr = fmt.Sprintf("%s\n%s", m.chatContentStr, renderMessage(msg.msg))
+		m.chatContentStr = fmt.Sprintf("%s\n%s", m.chatContentStr, renderMessage(msg.Msg))
 	}
 
 	// otherwise pass it down the line
@@ -88,24 +88,20 @@ func (m *Model) updateBrowseMessages(msg tea.Msg) (*Model, tea.Cmd) {
 	return m, cmd
 }
 
-type sendErrorMsg struct {
-	err error
-}
-
 // updateWriteMessage returns nil as first argument if message isn't supported
 func (m *Model) updateWriteMessage(msg tea.Msg) (*Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		switch msg.String() {
+		switch {
 		// leave to the chat
-		case "esc":
+		case msg.String() == "esc":
 			m.status = browseMessages
 			m.messageInput.Blur()
-		case "shift+enter":
+		case msg.String() == "enter" && msg.Alt:
 			var cmd tea.Cmd
 			m.messageInput, cmd = m.messageInput.Update(tea.KeyEnter)
 			return m, cmd
-		case "enter":
+		case msg.String() == "enter":
 			if m.messageInput.Length() == 0 {
 				return m, nil
 			}
@@ -120,13 +116,12 @@ func (m *Model) updateWriteMessage(msg tea.Msg) (*Model, tea.Cmd) {
 				})
 
 				if err != nil {
-					return sendErrorMsg{err}
+					return ErrorMsg{err}
 				}
 				return nil
 			}
 		}
 	}
-	// todo: add handler for send error
 
 	// otherwise pass it down the line
 	var cmd tea.Cmd

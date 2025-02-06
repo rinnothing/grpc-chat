@@ -6,6 +6,7 @@ import (
 
 	"github.com/rinnothing/grpc-chat/internal/pkg/model"
 
+	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/viewport"
@@ -18,6 +19,7 @@ const (
 	showChats modelState = iota
 	browseMessages
 	writeMessage
+	askApproval
 )
 
 type MessageSender interface {
@@ -31,17 +33,28 @@ type MessageRepo interface {
 type Model struct {
 	status modelState
 
-	chatsList    table.Model
+	chatsList table.Model
 	rowToUser []*model.User
 	rowsMx    sync.Mutex
 
-	chatContent  viewport.Model
-	msgRepo MessageRepo
+	chatContent    viewport.Model
+	msgRepo        MessageRepo
 	chatContentStr string
-	curUser *model.User
+	curUser        *model.User
 
 	messageInput textarea.Model
-	sender MessageSender
+	sender       MessageSender
+
+	approveMenu    list.Model
+	approveChannel chan<- bool
+}
+
+type item struct {
+	text string
+}
+
+func (i item) FilterValue() string {
+	return i.text
 }
 
 func New(sender MessageSender, msgRepo MessageRepo) *Model {
@@ -57,16 +70,21 @@ func New(sender MessageSender, msgRepo MessageRepo) *Model {
 			table.WithColumns(listColumns),
 			table.WithFocused(true),
 		),
+		rowToUser:    make([]*model.User, 0),
 		chatContent:  viewport.Model{},
+		msgRepo:      msgRepo,
 		messageInput: textarea.New(),
 		sender:       sender,
-		rowToUser:    make([]*model.User, 0),
-		msgRepo:      msgRepo,
+		approveMenu:  list.New([]list.Item{item{"Yes"}, item{"No"}}, list.NewDefaultDelegate(), 0, 0),
 	}
 }
 
 func (m *Model) Init() tea.Cmd {
 	return nil
+}
+
+type ErrorMsg struct {
+	err error
 }
 
 // Update passes message to it's two parts or processes it itself when key
@@ -85,6 +103,8 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 			return m.updateBrowseMessages(msg)
 		case writeMessage:
 			return m.updateWriteMessage(msg)
+		case askApproval:
+			return m.updateApprove(msg)
 		default:
 			return m, nil
 		}
@@ -92,10 +112,11 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 
 	// otherwise call messages on both parts and combine the outputs
 	var mdl *Model
-	cmds := make([]tea.Cmd, 3)
+	cmds := make([]tea.Cmd, 4)
 	mdl, cmds[0] = m.updateChats(msg)
 	mdl, cmds[1] = mdl.updateBrowseMessages(msg)
 	mdl, cmds[2] = mdl.updateWriteMessage(msg)
+	mdl, cmds[3] = mdl.updateApprove(msg)
 
 	return mdl, tea.Batch(cmds...)
 }
@@ -108,6 +129,8 @@ func (m *Model) View() string {
 		fallthrough
 	case writeMessage:
 		return m.viewMessages()
+	case askApproval:
+		return m.viewApprove()
 	default:
 		panic("unknown model status")
 	}
