@@ -2,18 +2,47 @@ package tui
 
 import (
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/rinnothing/grpc-chat/internal/pkg/model"
 
+	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-func (m *Model) viewChats() string {
-	return m.chatsList.View()
+type chats struct {
+	table.Model
+	rowToUser []*model.User
+	rowsMx    sync.Mutex
 }
 
-//NewChatMsg is the message that signals that new chat has opened
+func newChats() *chats {
+	listColumns := []table.Column{
+		{Title: "Sender", Width: 20},
+		{Title: "Last message", Width: 15},
+		{Title: "Status", Width: 5},
+	}
+
+	return &chats{
+		Model: table.New(
+			table.WithColumns(listColumns),
+			table.WithFocused(true),
+		),
+		rowToUser: make([]*model.User, 0),
+		rowsMx:    sync.Mutex{},
+	}
+}
+
+func (c *chats) Init() tea.Cmd {
+	return nil
+}
+
+func (c *chats) View() string {
+	return c.Model.View()
+}
+
+// NewChatMsg is the message that signals that new chat has opened
 type NewChatMsg struct {
 	Msg *model.Message
 }
@@ -30,38 +59,39 @@ func msgToRow(msg *model.Message) []string {
 	}
 }
 
-// updateChats returns nil as first argument if message isn't supported
-func (m *Model) updateChats(msg tea.Msg) (*Model, tea.Cmd) {
+func (c *chats) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		// open selected chat
 		case "enter":
-			if len(m.rowToUser) == 0 {
-				return m, nil
+			if len(c.rowToUser) == 0 {
+				return c, nil
 			}
 
 			// tell messages to open chat of user, then switch the status
-			m.Update(OpenBranchMsg{m.rowToUser[m.chatsList.Cursor()]})
-			m.chatsList.Blur()
-			m.status = browseMessages
+			c.Update(OpenBranchMsg{c.rowToUser[c.Cursor()]})
+			//c.Blur()
+			return c, tea.Batch(sendMsg(UpdateStatusMsg{browseMessages}),
+				sendMsg(OpenBranchMsg{c.rowToUser[c.Cursor()]}))
 		}
 	case NewChatMsg:
-		m.rowsMx.Lock()
+		c.rowsMx.Lock()
 
 		// adding user to list
-		m.rowToUser = append(m.rowToUser, msg.Msg.User)
+		c.rowToUser = append(c.rowToUser, msg.Msg.User)
 
 		// adding new row to user interface
-		updatedRows := m.chatsList.Rows()
+		updatedRows := c.Rows()
 		updatedRows = append(updatedRows, msgToRow(msg.Msg))
-		m.chatsList.SetRows(updatedRows)
+		c.SetRows(updatedRows)
 
-		m.rowsMx.Unlock()
+		c.rowsMx.Unlock()
+		return c, nil
 	}
 
 	// otherwise pass it to table
 	var cmd tea.Cmd
-	m.chatsList, cmd = m.chatsList.Update(msg)
-	return m, cmd
+	c.Model, cmd = c.Model.Update(msg)
+	return c, cmd
 }

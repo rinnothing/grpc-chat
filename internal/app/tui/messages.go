@@ -8,12 +8,14 @@ import (
 
 	"github.com/rinnothing/grpc-chat/internal/pkg/model"
 
+	"github.com/charmbracelet/bubbles/textarea"
+	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
 const gap = "\n"
 
-func (m *Model) viewMessages() string {
+func (m *messages) View() string {
 	return fmt.Sprintf("%s%s%s", m.chatContent.View(), gap, m.messageInput.View())
 }
 
@@ -47,31 +49,65 @@ func renderChat(user *model.User, msgs []*model.Message) string {
 	return b.String()
 }
 
+func newMessages(msgRepo MessageRepo, sender MessageSender) *messages {
+	return &messages{
+		chatContent:  viewport.Model{},
+		msgRepo:      msgRepo,
+		messageInput: textarea.New(),
+		sender:       sender,
+	}
+}
+
+type messages struct {
+	Mode modelState
+
+	chatContent    viewport.Model
+	msgRepo        MessageRepo
+	chatContentStr string
+	curUser        *model.User
+
+	messageInput textarea.Model
+	sender       MessageSender
+}
+
+func (m *messages) Init() tea.Cmd {
+	return nil
+}
+
+func (m *messages) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch m.Mode {
+	case browseMessages:
+		return m.updateBrowseMessages(msg)
+	case writeMessage:
+		return m.updateWriteMessage(msg)
+	default:
+		panic("invalid mode")
+	}
+}
+
 // updateBrowseMessages returns nil as first argument if message isn't supported
-func (m *Model) updateBrowseMessages(msg tea.Msg) (*Model, tea.Cmd) {
+func (m *messages) updateBrowseMessages(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		// leave to chats
 		case "esc":
-			m.status = showChats
-			m.chatsList.Focus()
+			return m, sendMsg(UpdateStatusMsg{showChats})
 		// start typing message
 		case "enter":
-			m.status = writeMessage
 			m.messageInput.Focus()
+			return m, sendMsg(UpdateStatusMsg{writeMessage})
 		}
 	case OpenBranchMsg:
 		// setting loading screen
 		m.chatContent.SetContent(fmt.Sprintf("%s\nloading...", msg.User.Username))
 		m.curUser = msg.User
 		// send command to retrieve content
-		return m, func() tea.Msg {
-			return GotMessagesMsg{msg.User, m.msgRepo.GetMessages(context.TODO(), msg.User)}
-		}
+		return m, sendMsg(GotMessagesMsg{msg.User, m.msgRepo.GetMessages(context.TODO(), msg.User)})
 	case GotMessagesMsg:
 		m.chatContentStr = renderChat(msg.Usr, msg.Msg)
 		m.chatContent.SetContent(m.chatContentStr)
+		return m, nil
 	case NewMessageMsg:
 		// skip if not in current chat
 		if m.curUser == nil || msg.Msg.User.Username != m.curUser.Username {
@@ -80,6 +116,7 @@ func (m *Model) updateBrowseMessages(msg tea.Msg) (*Model, tea.Cmd) {
 
 		// otherwise add new message to list
 		m.chatContentStr = fmt.Sprintf("%s\n%s", m.chatContentStr, renderMessage(msg.Msg))
+		return m, nil
 	}
 
 	// otherwise pass it down the line
@@ -89,14 +126,14 @@ func (m *Model) updateBrowseMessages(msg tea.Msg) (*Model, tea.Cmd) {
 }
 
 // updateWriteMessage returns nil as first argument if message isn't supported
-func (m *Model) updateWriteMessage(msg tea.Msg) (*Model, tea.Cmd) {
+func (m *messages) updateWriteMessage(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch {
 		// leave to the chat
 		case msg.String() == "esc":
-			m.status = browseMessages
 			m.messageInput.Blur()
+			return m, sendMsg(UpdateStatusMsg{browseMessages})
 		case msg.String() == "enter" && msg.Alt:
 			var cmd tea.Cmd
 			m.messageInput, cmd = m.messageInput.Update(tea.KeyEnter)
